@@ -1,14 +1,9 @@
 import streamlit as st
 import datetime
-import pandas as pd  # Importa a biblioteca pandas
-import altair as alt # Importa a biblioteca altair
+import pandas as pd
+import altair as alt
 
-# --- FUNÇÃO AUXILIAR ---
 def parse_fraction(frac_str: str) -> float:
-    """
-    Converte uma string de fração (ex: '1/3', '2/5') ou decimal (ex: '0.5')
-    em um número float.
-    """
     try:
         if "/" in frac_str:
             num, den = frac_str.strip().split('/')
@@ -16,22 +11,17 @@ def parse_fraction(frac_str: str) -> float:
                 return 0.0
             return float(num) / float(den)
         else:
-            # Permite também a inserção de números decimais (ex: 0.5)
             return float(frac_str.strip().replace(",", "."))
     except (ValueError, TypeError, ZeroDivisionError):
-        # Retorna 0.0 se a string for inválida (ex: 'abc')
         return 0.0
 
-# --- INÍCIO DA APLICAÇÃO ---
 st.set_page_config(layout="wide")
 
-# --- ADIÇÃO DA LOGO AQUI ---
-st.image("logo_fgv_dosimetria.png", width=200) # Verifique se este arquivo existe
+st.image("logo_fgv_dosimetria.png", width=200)
 
 st.title("⚖️ Calculadora de Dosimetria da Pena")
 st.markdown("Simulador do Método Trifásico (Art. 68 do Código Penal)")
 
-# --- CRIAÇÃO DAS ABAS ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🏁 Penas Cominadas", 
     "1️⃣ Fase 1: Pena-Base", 
@@ -40,8 +30,6 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Resultado Final"
 ])
 
-
-# --- ABA 1: PENAS COMINADAS E TERMO MÉDIO ---
 with tab1:
     st.header("Penas Cominadas e Termo Médio")
 
@@ -85,8 +73,6 @@ with tab1:
     termo_medio = (pena_maxima_cominada + pena_minima_cominada) / 2
     st.metric("Termo Médio:", f"{termo_medio:.2f} anos")
 
-
-# --- ABA 2: FASE 1: PENA-BASE ---
 with tab2:
     st.header("1ª Fase: Pena-Base (Circunstâncias Judiciais - Art. 59)")
 
@@ -143,8 +129,6 @@ with tab2:
 
     st.metric("Pena-Base (Resultado da 1ª Fase):", f"{pena_base:.2f} anos")
 
-
-# --- ABA 3: FASE 2: PENA-PROVISÓRIA ---
 with tab3:
     st.header("2ª Fase: Pena-Provisória (Atenuantes e Agravantes)")
 
@@ -186,14 +170,12 @@ with tab3:
 
     st.metric("Pena Provisória (Resultado da 2ª Fase):", f"{pena_provisoria:.2f} anos")
 
-
-# --- ABA 4: FASE 3: PENA DEFINITIVA ---
 with tab4:
     st.header("3ª Fase: Pena Definitiva (Causas de Aumento e Diminuição)")
     st.info("A ordem de cálculo é: 1º) Causas de Aumento, 2º) Causas de Diminuição.")
 
     pena_definitiva = pena_provisoria
-    pena_apos_aumento = pena_provisoria # Variável corrigida
+    pena_apos_aumento = pena_provisoria
 
     st.subheader("Causas de Aumento (Gerais e Especiais)")
     tem_aumento = st.radio("Há causas de AUMENTO?", ("Não", "Sim"), horizontal=True, key="radio_aum")
@@ -243,11 +225,9 @@ with tab4:
 
     st.metric("Pena Definitiva (Resultado da 3ª Fase):", f"{pena_definitiva:.2f} anos")
 
-# --- ABA 5: RESULTADO FINAL ---
 with tab5:
     st.header("Análise Final: Regime e Substituição")
 
-    # --- Fixação do Regime ---
     st.subheader("Fixação do Regime Penal (Art. 33 CP)")
 
     regime = "Indefinido"
@@ -273,8 +253,7 @@ with tab5:
     st.metric("Regime Inicial de Cumprimento Sugerido:", regime)
     st.write("---")
 
-    # Simplifica o regime calculado para bater com os gráficos
-    regime_simplificado = "Indefinido" # Corrigido aqui
+    regime_simplificado = "Indefinido"
     if "FECHADO" in regime.upper():
         regime_simplificado = "Fechado"
     elif "SEMIABERTO" in regime.upper():
@@ -282,31 +261,25 @@ with tab5:
     elif "ABERTO" in regime.upper():
         regime_simplificado = "Aberto"
 
-    # --- GRÁFICO DE ROSCA (DADOS CORRIGIDOS) ---
     st.subheader("Contexto: População em Estabelecimentos Penais por Regime (Fonte: Sisdepen)")
     st.markdown("""
     O gráfico de rosca abaixo utiliza dados públicos (Sisdepen) para contextualizar o resultado.
     """)
 
-    # 1. Dados corrigidos conforme sua solicitação
-    # As porcentagens foram recalculadas
     data_cnj = {
         'Regime': ['Fechado', 'Semiaberto', 'Aberto'],
         'NumeroDePessoas': [385102, 111404, 3230],
-        'Porcentagem': [77.1, 22.3, 0.6] # Total: 499.736 (100%)
+        'Porcentagem': [77.1, 22.3, 0.6]
     }
     df_cnj = pd.DataFrame(data_cnj)
 
-    # 2. Define o domínio e o range das cores (cores personalizadas)
     domain_cnj = ['Fechado', 'Semiaberto', 'Aberto']
-    range_cnj = ['#D9534F', '#F0AD4E', '#5CB85C'] # Vermelho, Laranja, Verde
+    range_cnj = ['#D9534F', '#F0AD4E', '#5CB85C']
 
-    # 3. Cria o gráfico de rosca (Donut Chart)
     base = alt.Chart(df_cnj).encode(
        theta=alt.Theta("Porcentagem", stack=True)
     )
 
-    # Camada da rosca com cores personalizadas
     pie = base.mark_arc(outerRadius=120, innerRadius=80).encode(
         color=alt.Color('Regime',
                         scale=alt.Scale(
@@ -321,19 +294,16 @@ with tab5:
         title="Distribuição de Pessoas por Regime (Fonte: Sisdepen)"
     )
 
-    # Camada de texto (porcentagens)
     text = base.mark_text(radius=140).encode(
         text=alt.Text('Porcentagem', format=".1f"),
         order=alt.Order('Porcentagem', sort='descending'),
-        color=alt.value("black") # Cor do texto
+        color=alt.value("black")
     )
     
     chart_donut = pie + text
     
-    # 4. Exibe o gráfico
     st.altair_chart(chart_donut, use_container_width=True)
 
-    # 5. Adiciona o texto de contexto
     if regime_simplificado != "Indefinido" and regime_simplificado in df_cnj['Regime'].values:
         dados_regime = df_cnj[df_cnj['Regime'] == regime_simplificado].iloc[0]
         st.info(f"""
@@ -342,9 +312,8 @@ with tab5:
         correspondendo a **{dados_regime['NumeroDePessoas']:,.0f}** pessoas.
         """.replace(",", "."))
     
-    st.write("---") # Separador antes da próxima seção
+    st.write("---")
 
-    # --- Substituição da Pena ---
     st.subheader("Substituição da Pena (Art. 44 CP)")
     st.write("Responda aos requisitos para análise da substituição:")
 
@@ -385,5 +354,3 @@ with tab5:
     st.markdown("""
     **Aviso Legal:** Esta é uma ferramenta de simulação e aprendizado, baseada nas regras gerais do Código Penal Brasileiro e em Súmulas de tribunais superiores. Ela não substitui a análise de um juiz ou advogado, que considera a totalidade e as nuances do caso concreto. As interpretações (como o valor da fração na 1ª fase) podem variar.
     """)
-
-
