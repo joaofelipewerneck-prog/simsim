@@ -274,7 +274,7 @@ with tab5:
     st.write("---")
 
     # Simplifica o regime calculado para bater com os gráficos
-    regime_simplificado = "Indefindo"
+    regime_simplificado = "Indefinido" # Corrigido aqui
     if "FECHADO" in regime.upper():
         regime_simplificado = "Fechado"
     elif "SEMIABERTO" in regime.upper():
@@ -282,19 +282,18 @@ with tab5:
     elif "ABERTO" in regime.upper():
         regime_simplificado = "Aberto"
 
-    # --- GRÁFICO DE ROSCA (DADOS DO CNJ) ---
-    st.subheader("Contexto: População em Execução Penal por Regime (Fonte: CNJ)")
+    # --- GRÁFICO DE ROSCA (DADOS CORRIGIDOS) ---
+    st.subheader("Contexto: População em Estabelecimentos Penais por Regime (Fonte: Sisdepen)")
     st.markdown("""
-    O gráfico de rosca abaixo utiliza dados públicos do **Painel CNJ** (referentes à execução penal) para contextualizar o resultado. 
-    **Nota:** "Medida de Segurança" foi removida para focar nos regimes de pena.
+    O gráfico de rosca abaixo utiliza dados públicos (Sisdepen) para contextualizar o resultado.
     """)
 
-    # 1. Dados extraídos do Painel CNJ (Sem Medida de Segurança)
-    # As porcentagens foram recalculadas para somar 100%
+    # 1. Dados corrigidos conforme sua solicitação
+    # As porcentagens foram recalculadas
     data_cnj = {
         'Regime': ['Fechado', 'Semiaberto', 'Aberto'],
-        'NumeroDePessoas': [341282, 161026, 111417],
-        'Porcentagem': [55.6, 26.2, 18.2] # Recalculado (Total: 100%)
+        'NumeroDePessoas': [385102, 111404, 3230],
+        'Porcentagem': [77.1, 22.3, 0.6] # Total: 499.736 (100%)
     }
     df_cnj = pd.DataFrame(data_cnj)
 
@@ -319,7 +318,7 @@ with tab5:
         order=alt.Order('Porcentagem', sort='descending'),
         tooltip=['Regime', 'NumeroDePessoas', alt.Tooltip('Porcentagem', format='.1f')]
     ).properties(
-        title="Distribuição de Pessoas por Regime (Fonte: CNJ)"
+        title="Distribuição de Pessoas por Regime (Fonte: Sisdepen)"
     )
 
     # Camada de texto (porcentagens)
@@ -339,7 +338,7 @@ with tab5:
         dados_regime = df_cnj[df_cnj['Regime'] == regime_simplificado].iloc[0]
         st.info(f"""
         **Adequação:** O seu caso se enquadra no **{dados_regime['Regime']}**. 
-        Nos dados do CNJ (excluindo 'Medida de Segurança'), esta categoria representa **{dados_regime['Porcentagem']}%** do total, 
+        Nos dados de referência, esta categoria representa **{dados_regime['Porcentagem']}%** do total, 
         correspondendo a **{dados_regime['NumeroDePessoas']:,.0f}** pessoas.
         """.replace(",", "."))
     
@@ -386,3 +385,5 @@ with tab5:
     st.markdown("""
     **Aviso Legal:** Esta é uma ferramenta de simulação e aprendizado, baseada nas regras gerais do Código Penal Brasileiro e em Súmulas de tribunais superiores. Ela não substitui a análise de um juiz ou advogado, que considera a totalidade e as nuances do caso concreto. As interpretações (como o valor da fração na 1ª fase) podem variar.
     """)
+
+
