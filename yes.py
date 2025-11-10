@@ -1,7 +1,8 @@
 import streamlit as st
 import datetime
-import pandas as pd  # NOVO: Importa a biblioteca pandas
-import altair as alt # NOVO: Importa a biblioteca altair
+# import pandas as pd  # REMOVIDO: Não é mais necessário para o gráfico
+# import altair as alt # REMOVIDO: Substituído por Matplotlib
+import matplotlib.pyplot as plt # NOVO: Importa a biblioteca Matplotlib
 
 # --- FUNÇÃO AUXILIAR ---
 def parse_fraction(frac_str: str) -> float:
@@ -26,7 +27,10 @@ def parse_fraction(frac_str: str) -> float:
 st.set_page_config(layout="wide")
 
 # --- ADIÇÃO DA LOGO AQUI ---
-st.image("logo_fgv_dosimetria.png", width=200) # Verifique se este arquivo existe
+try:
+    st.image("logo_fgv_dosimetria.png", width=200) # Verifique se este arquivo existe
+except FileNotFoundError:
+    st.warning("Arquivo 'logo_fgv_dosimetria.png' não encontrado. Pulei o carregamento da imagem.")
 
 st.title("⚖️ Calculadora de Dosimetria da Pena")
 st.markdown("Simulador do Método Trifásico (Art. 68 do Código Penal)")
@@ -193,6 +197,7 @@ with tab4:
     st.info("A ordem de cálculo é: 1º) Causas de Aumento, 2º) Causas de Diminuição.")
 
     pena_definitiva = pena_provisoria
+    # CORREÇÃO: Removido o espaço indevido na variável
     pena_apos_aumento = pena_provisoria
 
     st.subheader("Causas de Aumento (Gerais e Especiais)")
@@ -273,7 +278,7 @@ with tab5:
     st.metric("Regime Inicial de Cumprimento Sugerido:", regime)
     st.write("---")
 
-    # NOVO: LÓGICA DO GRÁFICO
+    # --- INÍCIO DA LÓGICA DO GRÁFICO DE PIZZA (MATPLOTLIB) ---
     st.subheader("Contexto Estatístico (Dados Fictícios)")
 
     # 1. Simplifica o regime calculado para bater com o gráfico
@@ -285,36 +290,34 @@ with tab5:
     elif "ABERTO" in regime.upper():
         regime_simplificado = "Aberto"
 
-    # 2. Cria o banco de dados fictício
-    data = {'Regime': ['Aberto', 'Semiaberto', 'Fechado'],
-            'Porcentagem': [45, 35, 20]} # Você pode ajustar esses valores
+    # 2. Cria os dados fictícios para o gráfico de pizza
+    labels = ['Aberto', 'Semiaberto', 'Fechado']
+    sizes = [45, 35, 20] # Você pode ajustar esses valores
+    colors = ['#90EE90', '#FFD700', '#FF6347'] # Verde, Amarelo, Vermelho
     
-    df = pd.DataFrame(data)
-
-    # 3. Adiciona uma coluna para o destaque
-    df['Destaque'] = df['Regime'].apply(
-        lambda x: 'Resultado Deste Caso' if x == regime_simplificado else 'Média Geral'
-    )
-
-    # 4. Cria o gráfico com Altair
-    chart = alt.Chart(df).mark_bar().encode(
-        x=alt.X('Regime', sort=None), # sort=None mantém a ordem [Aberto, Semiaberto, Fechado]
-        y=alt.Y('Porcentagem', title='Porcentagem de Casos (%)'),
-        color=alt.Color('Destaque',
-                        scale=alt.Scale(
-                            domain=['Resultado Deste Caso', 'Média Geral'],
-                            range=['#FF4B4B', '#909090'] # Vermelho para destaque, cinza para outros
-                        ),
-                        legend=alt.Legend(title="Legenda")
-                       ),
-        tooltip=['Regime', 'Porcentagem']
-    ).properties(
-        title="Posicionamento do Caso na Média Fictícia de Regimes"
-    )
+    # 3. Adiciona o "explode" (destaque) para a fatia correspondente
+    explode = [0, 0, 0] # Lista de zeros
+    if regime_simplificado in labels:
+        indice = labels.index(regime_simplificado)
+        explode[indice] = 0.1 # Destaca a fatia
+    
+    # 4. Cria o gráfico com Matplotlib
+    fig, ax = plt.subplots()
+    ax.pie(sizes, 
+           labels=labels, 
+           colors=colors, 
+           autopct='%1.1f%%', 
+           startangle=90,
+           explode=explode) # Aplica o destaque
+    
+    ax.axis('equal') # Garante que o gráfico seja um círculo
+    
+    # Adiciona um título ao gráfico dentro da figura
+    plt.title("Posicionamento do Caso na Média Fictícia de Regimes")
 
     # 5. Exibe o gráfico no Streamlit
-    st.altair_chart(chart, use_container_width=True)
-    # FIM DA LÓGICA DO GRÁFICO
+    st.pyplot(fig)
+    # --- FIM DA LÓGICA DO GRÁFICO DE PIZZA ---
 
     st.write("---")
     
@@ -357,7 +360,8 @@ with tab5:
 
     st.markdown("---")
     st.markdown("""
-    **Aviso Legal:** Esta é uma ferramenta de simulação e aprendizado...
+    **Aviso Legal:** Esta é uma ferramenta de simulação e aprendizado. 
+    Os cálculos são baseados em interpretações comuns da lei e da jurisprudência, 
+    mas não substituem a análise de um profissional do direito qualificado. 
+    A complexidade do caso concreto pode exigir considerações não abrangidas por este simulador.
     """)
-
-
