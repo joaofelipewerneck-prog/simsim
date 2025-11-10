@@ -193,9 +193,7 @@ with tab4:
     st.info("A ordem de cálculo é: 1º) Causas de Aumento, 2º) Causas de Diminuição.")
 
     pena_definitiva = pena_provisoria
-    
-    # CORREÇÃO DO SYNTAX ERROR: Removido o espaço
-    pena_apos_aumento = pena_provisoria
+    pena_apos_aumento = pena_provisoria # Variável corrigida
 
     st.subheader("Causas de Aumento (Gerais e Especiais)")
     tem_aumento = st.radio("Há causas de AUMENTO?", ("Não", "Sim"), horizontal=True, key="radio_aum")
@@ -276,7 +274,7 @@ with tab5:
     st.write("---")
 
     # Simplifica o regime calculado para bater com os gráficos
-    regime_simplificado = "Indefinido"
+    regime_simplificado = "Indefindo"
     if "FECHADO" in regime.upper():
         regime_simplificado = "Fechado"
     elif "SEMIABERTO" in regime.upper():
@@ -284,38 +282,39 @@ with tab5:
     elif "ABERTO" in regime.upper():
         regime_simplificado = "Aberto"
 
-    # --- NOVO GRÁFICO DE ROSCA (DADOS DO CNJ) ---
+    # --- GRÁFICO DE ROSCA (DADOS DO CNJ) ---
     st.subheader("Contexto: População em Execução Penal por Regime (Fonte: CNJ)")
     st.markdown("""
-    O gráfico de rosca abaixo utiliza dados públicos do **Painel CNJ** (referentes à execução penal) para contextualizar o resultado.
+    O gráfico de rosca abaixo utiliza dados públicos do **Painel CNJ** (referentes à execução penal) para contextualizar o resultado. 
+    **Nota:** "Medida de Segurança" foi removida para focar nos regimes de pena.
     """)
 
-    # 1. Dados extraídos do Painel CNJ (Execução Penal, 1º Grau)
+    # 1. Dados extraídos do Painel CNJ (Sem Medida de Segurança)
+    # As porcentagens foram recalculadas para somar 100%
     data_cnj = {
-        'Regime': ['Fechado', 'Semiaberto', 'Aberto', 'Medida de Segurança'],
-        'NumeroDePessoas': [341282, 161026, 111417, 25590],
-        'Porcentagem': [53.4, 25.2, 17.4, 4.0]
+        'Regime': ['Fechado', 'Semiaberto', 'Aberto'],
+        'NumeroDePessoas': [341282, 161026, 111417],
+        'Porcentagem': [55.6, 26.2, 18.2] # Recalculado (Total: 100%)
     }
     df_cnj = pd.DataFrame(data_cnj)
 
-    # 2. Adiciona destaque
-    df_cnj['Destaque'] = df_cnj['Regime'].apply(
-        lambda x: 'Resultado Deste Caso' if x == regime_simplificado else 'Outros Regimes'
-    )
+    # 2. Define o domínio e o range das cores (cores personalizadas)
+    domain_cnj = ['Fechado', 'Semiaberto', 'Aberto']
+    range_cnj = ['#D9534F', '#F0AD4E', '#5CB85C'] # Vermelho, Laranja, Verde
 
     # 3. Cria o gráfico de rosca (Donut Chart)
     base = alt.Chart(df_cnj).encode(
        theta=alt.Theta("Porcentagem", stack=True)
     )
 
-    # Camada da rosca
+    # Camada da rosca com cores personalizadas
     pie = base.mark_arc(outerRadius=120, innerRadius=80).encode(
-        color=alt.Color('Destaque',
+        color=alt.Color('Regime',
                         scale=alt.Scale(
-                            domain=['Resultado Deste Caso', 'Outros Regimes'],
-                            range=['#FF4B4B', '#909090'] # Vermelho para destaque, cinza para outros
+                            domain=domain_cnj,
+                            range=range_cnj
                         ),
-                        legend=alt.Legend(title="Legenda")
+                        legend=alt.Legend(title="Regimes")
                        ),
         order=alt.Order('Porcentagem', sort='descending'),
         tooltip=['Regime', 'NumeroDePessoas', alt.Tooltip('Porcentagem', format='.1f')]
@@ -337,51 +336,15 @@ with tab5:
 
     # 5. Adiciona o texto de contexto
     if regime_simplificado != "Indefinido" and regime_simplificado in df_cnj['Regime'].values:
-        # Puxa os dados do regime calculado para o texto
         dados_regime = df_cnj[df_cnj['Regime'] == regime_simplificado].iloc[0]
         st.info(f"""
         **Adequação:** O seu caso se enquadra no **{dados_regime['Regime']}**. 
-        Nos dados do CNJ, esta categoria representa **{dados_regime['Porcentagem']}%** do total, 
+        Nos dados do CNJ (excluindo 'Medida de Segurança'), esta categoria representa **{dados_regime['Porcentagem']}%** do total, 
         correspondendo a **{dados_regime['NumeroDePessoas']:,.0f}** pessoas.
-        """.replace(",", ".")) # Formata o número (10000 -> 10.000)
+        """.replace(",", "."))
     
-    st.write("---")
-    # --- FIM DO GRÁFICO DE ROSCA ---
+    st.write("---") # Separador antes da próxima seção
 
-
-    # --- GRÁFICO DE BARRAS (Fictício) ---
-    st.subheader("Contexto Estatístico (Dados Fictícios)")
-
-    # 1. Cria o banco de dados fictício
-    data_ficticio = {'Regime': ['Aberto', 'Semiaberto', 'Fechado'],
-                     'Porcentagem': [45, 35, 20]}
-    df_ficticio = pd.DataFrame(data_ficticio)
-
-    # 2. Adiciona uma coluna para o destaque
-    df_ficticio['Destaque'] = df_ficticio['Regime'].apply(
-        lambda x: 'Resultado Deste Caso' if x == regime_simplificado else 'Média Geral'
-    )
-
-    # 3. Cria o gráfico com Altair
-    chart_bar = alt.Chart(df_ficticio).mark_bar().encode(
-        x=alt.X('Regime', sort=None),
-        y=alt.Y('Porcentagem', title='Porcentagem de Casos (%)'),
-        color=alt.Color('Destaque',
-                        scale=alt.Scale(
-                            domain=['Resultado Deste Caso', 'Média Geral'],
-                            range=['#FF4B4B', '#909090']
-                        ),
-                        legend=alt.Legend(title="Legenda")
-                       ),
-        tooltip=['Regime', 'Porcentagem']
-    ).properties(
-        title="Posicionamento do Caso na Média Fictícia de Regimes"
-    )
-
-    # 4. Exibe o gráfico no Streamlit
-    st.altair_chart(chart_bar, use_container_width=True)
-    st.write("---")
-    
     # --- Substituição da Pena ---
     st.subheader("Substituição da Pena (Art. 44 CP)")
     st.write("Responda aos requisitos para análise da substituição:")
@@ -423,5 +386,3 @@ with tab5:
     st.markdown("""
     **Aviso Legal:** Esta é uma ferramenta de simulação e aprendizado, baseada nas regras gerais do Código Penal Brasileiro e em Súmulas de tribunais superiores. Ela não substitui a análise de um juiz ou advogado, que considera a totalidade e as nuances do caso concreto. As interpretações (como o valor da fração na 1ª fase) podem variar.
     """)
-
-
