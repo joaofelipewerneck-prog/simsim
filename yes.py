@@ -193,7 +193,7 @@ with tab4:
     st.info("A ordem de cálculo é: 1º) Causas de Aumento, 2º) Causas de Diminuição.")
 
     pena_definitiva = pena_provisoria
-    pena_ apos_aumento = pena_provisoria
+    pena_apos_aumento = pena_provisoria
 
     st.subheader("Causas de Aumento (Gerais e Especiais)")
     tem_aumento = st.radio("Há causas de AUMENTO?", ("Não", "Sim"), horizontal=True, key="radio_aum")
