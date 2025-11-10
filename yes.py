@@ -1,8 +1,7 @@
 import streamlit as st
 import datetime
-# import pandas as pd  # REMOVIDO: Não é mais necessário para o gráfico
-# import altair as alt # REMOVIDO: Substituído por Matplotlib
-import matplotlib.pyplot as plt # NOVO: Importa a biblioteca Matplotlib
+import pandas as pd  # Importa a biblioteca pandas
+import altair as alt # Importa a biblioteca altair
 
 # --- FUNÇÃO AUXILIAR ---
 def parse_fraction(frac_str: str) -> float:
@@ -27,10 +26,7 @@ def parse_fraction(frac_str: str) -> float:
 st.set_page_config(layout="wide")
 
 # --- ADIÇÃO DA LOGO AQUI ---
-try:
-    st.image("logo_fgv_dosimetria.png", width=200) # Verifique se este arquivo existe
-except FileNotFoundError:
-    st.warning("Arquivo 'logo_fgv_dosimetria.png' não encontrado. Pulei o carregamento da imagem.")
+st.image("logo_fgv_dosimetria.png", width=200) # Verifique se este arquivo existe
 
 st.title("⚖️ Calculadora de Dosimetria da Pena")
 st.markdown("Simulador do Método Trifásico (Art. 68 do Código Penal)")
@@ -197,7 +193,8 @@ with tab4:
     st.info("A ordem de cálculo é: 1º) Causas de Aumento, 2º) Causas de Diminuição.")
 
     pena_definitiva = pena_provisoria
-    # CORREÇÃO: Removido o espaço indevido na variável
+    
+    # CORREÇÃO DO SYNTAX ERROR: Removido o espaço
     pena_apos_aumento = pena_provisoria
 
     st.subheader("Causas de Aumento (Gerais e Especiais)")
@@ -278,10 +275,7 @@ with tab5:
     st.metric("Regime Inicial de Cumprimento Sugerido:", regime)
     st.write("---")
 
-    # --- INÍCIO DA LÓGICA DO GRÁFICO DE PIZZA (MATPLOTLIB) ---
-    st.subheader("Contexto Estatístico (Dados Fictícios)")
-
-    # 1. Simplifica o regime calculado para bater com o gráfico
+    # Simplifica o regime calculado para bater com os gráficos
     regime_simplificado = "Indefinido"
     if "FECHADO" in regime.upper():
         regime_simplificado = "Fechado"
@@ -290,35 +284,102 @@ with tab5:
     elif "ABERTO" in regime.upper():
         regime_simplificado = "Aberto"
 
-    # 2. Cria os dados fictícios para o gráfico de pizza
-    labels = ['Aberto', 'Semiaberto', 'Fechado']
-    sizes = [45, 35, 20] # Você pode ajustar esses valores
-    colors = ['#90EE90', '#FFD700', '#FF6347'] # Verde, Amarelo, Vermelho
-    
-    # 3. Adiciona o "explode" (destaque) para a fatia correspondente
-    explode = [0, 0, 0] # Lista de zeros
-    if regime_simplificado in labels:
-        indice = labels.index(regime_simplificado)
-        explode[indice] = 0.1 # Destaca a fatia
-    
-    # 4. Cria o gráfico com Matplotlib
-    fig, ax = plt.subplots()
-    ax.pie(sizes, 
-           labels=labels, 
-           colors=colors, 
-           autopct='%1.1f%%', 
-           startangle=90,
-           explode=explode) # Aplica o destaque
-    
-    ax.axis('equal') # Garante que o gráfico seja um círculo
-    
-    # Adiciona um título ao gráfico dentro da figura
-    plt.title("Posicionamento do Caso na Média Fictícia de Regimes")
+    # --- NOVO GRÁFICO DE ROSCA (DADOS DO CNJ) ---
+    st.subheader("Contexto: População em Execução Penal por Regime (Fonte: CNJ)")
+    st.markdown("""
+    O gráfico de rosca abaixo utiliza dados públicos do **Painel CNJ** (referentes à execução penal) para contextualizar o resultado.
+    """)
 
-    # 5. Exibe o gráfico no Streamlit
-    st.pyplot(fig)
-    # --- FIM DA LÓGICA DO GRÁFICO DE PIZZA ---
+    # 1. Dados extraídos do Painel CNJ (Execução Penal, 1º Grau)
+    data_cnj = {
+        'Regime': ['Fechado', 'Semiaberto', 'Aberto', 'Medida de Segurança'],
+        'NumeroDePessoas': [341282, 161026, 111417, 25590],
+        'Porcentagem': [53.4, 25.2, 17.4, 4.0]
+    }
+    df_cnj = pd.DataFrame(data_cnj)
 
+    # 2. Adiciona destaque
+    df_cnj['Destaque'] = df_cnj['Regime'].apply(
+        lambda x: 'Resultado Deste Caso' if x == regime_simplificado else 'Outros Regimes'
+    )
+
+    # 3. Cria o gráfico de rosca (Donut Chart)
+    base = alt.Chart(df_cnj).encode(
+       theta=alt.Theta("Porcentagem", stack=True)
+    )
+
+    # Camada da rosca
+    pie = base.mark_arc(outerRadius=120, innerRadius=80).encode(
+        color=alt.Color('Destaque',
+                        scale=alt.Scale(
+                            domain=['Resultado Deste Caso', 'Outros Regimes'],
+                            range=['#FF4B4B', '#909090'] # Vermelho para destaque, cinza para outros
+                        ),
+                        legend=alt.Legend(title="Legenda")
+                       ),
+        order=alt.Order('Porcentagem', sort='descending'),
+        tooltip=['Regime', 'NumeroDePessoas', alt.Tooltip('Porcentagem', format='.1f')]
+    ).properties(
+        title="Distribuição de Pessoas por Regime (Fonte: CNJ)"
+    )
+
+    # Camada de texto (porcentagens)
+    text = base.mark_text(radius=140).encode(
+        text=alt.Text('Porcentagem', format=".1f"),
+        order=alt.Order('Porcentagem', sort='descending'),
+        color=alt.value("black") # Cor do texto
+    )
+    
+    chart_donut = pie + text
+    
+    # 4. Exibe o gráfico
+    st.altair_chart(chart_donut, use_container_width=True)
+
+    # 5. Adiciona o texto de contexto
+    if regime_simplificado != "Indefinido" and regime_simplificado in df_cnj['Regime'].values:
+        # Puxa os dados do regime calculado para o texto
+        dados_regime = df_cnj[df_cnj['Regime'] == regime_simplificado].iloc[0]
+        st.info(f"""
+        **Adequação:** O seu caso se enquadra no **{dados_regime['Regime']}**. 
+        Nos dados do CNJ, esta categoria representa **{dados_regime['Porcentagem']}%** do total, 
+        correspondendo a **{dados_regime['NumeroDePessoas']:,.0f}** pessoas.
+        """.replace(",", ".")) # Formata o número (10000 -> 10.000)
+    
+    st.write("---")
+    # --- FIM DO GRÁFICO DE ROSCA ---
+
+
+    # --- GRÁFICO DE BARRAS (Fictício) ---
+    st.subheader("Contexto Estatístico (Dados Fictícios)")
+
+    # 1. Cria o banco de dados fictício
+    data_ficticio = {'Regime': ['Aberto', 'Semiaberto', 'Fechado'],
+                     'Porcentagem': [45, 35, 20]}
+    df_ficticio = pd.DataFrame(data_ficticio)
+
+    # 2. Adiciona uma coluna para o destaque
+    df_ficticio['Destaque'] = df_ficticio['Regime'].apply(
+        lambda x: 'Resultado Deste Caso' if x == regime_simplificado else 'Média Geral'
+    )
+
+    # 3. Cria o gráfico com Altair
+    chart_bar = alt.Chart(df_ficticio).mark_bar().encode(
+        x=alt.X('Regime', sort=None),
+        y=alt.Y('Porcentagem', title='Porcentagem de Casos (%)'),
+        color=alt.Color('Destaque',
+                        scale=alt.Scale(
+                            domain=['Resultado Deste Caso', 'Média Geral'],
+                            range=['#FF4B4B', '#909090']
+                        ),
+                        legend=alt.Legend(title="Legenda")
+                       ),
+        tooltip=['Regime', 'Porcentagem']
+    ).properties(
+        title="Posicionamento do Caso na Média Fictícia de Regimes"
+    )
+
+    # 4. Exibe o gráfico no Streamlit
+    st.altair_chart(chart_bar, use_container_width=True)
     st.write("---")
     
     # --- Substituição da Pena ---
@@ -360,8 +421,7 @@ with tab5:
 
     st.markdown("---")
     st.markdown("""
-    **Aviso Legal:** Esta é uma ferramenta de simulação e aprendizado. 
-    Os cálculos são baseados em interpretações comuns da lei e da jurisprudência, 
-    mas não substituem a análise de um profissional do direito qualificado. 
-    A complexidade do caso concreto pode exigir considerações não abrangidas por este simulador.
+    **Aviso Legal:** Esta é uma ferramenta de simulação e aprendizado, baseada nas regras gerais do Código Penal Brasileiro e em Súmulas de tribunais superiores. Ela não substitui a análise de um juiz ou advogado, que considera a totalidade e as nuances do caso concreto. As interpretações (como o valor da fração na 1ª fase) podem variar.
     """)
+
+
